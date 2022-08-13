@@ -18,7 +18,7 @@ const renderError = (message, secondaryMessage = "") => {
     .gray { fill: #858585 }
     </style>
     <rect x="0.5" y="0.5" width="494" height="99%" rx="4.5" fill="#FFFEFE" stroke="#E4E2E2"/>
-    <text x="25" y="45" class="text">Something went wrong! file an issue at https://git.io/JJmN9</text>
+    <text x="25" y="45" class="text">Something went wrong! file an issue at https://tiny.one/readme-stats</text>
     <text data-testid="message" x="25" y="55" class="text small">
       <tspan x="25" dy="18">${encodeHTML(message)}</tspan>
       <tspan x="25" dy="18" class="gray">${secondaryMessage}</tspan>
@@ -161,11 +161,11 @@ function flexLayout({ items, gap, direction, sizes = [] }) {
 
 /**
  * @typedef {object} CardColors
- * @prop {string} title_color
- * @prop {string} text_color
- * @prop {string} icon_color
- * @prop {string} bg_color
- * @prop {string} border_color
+ * @prop {string?=} title_color
+ * @prop {string?=} text_color
+ * @prop {string?=} icon_color
+ * @prop {string?=} bg_color
+ * @prop {string?=} border_color
  * @prop {keyof typeof import('../../themes')?=} fallbackTheme
  * @prop {keyof typeof import('../../themes')?=} theme
  */
@@ -220,12 +220,22 @@ function getCardColors({
  * @param {number} maxLines
  * @returns {string[]}
  */
-function wrapTextMultiline(text, width = 60, maxLines = 3) {
-  const wrapped = wrap(encodeHTML(text), { width })
-    .split("\n") // Split wrapped lines to get an array of lines
-    .map((line) => line.trim()); // Remove leading and trailing whitespace of each line
+function wrapTextMultiline(text, width = 59, maxLines = 3) {
+  const fullWidthComma = "，";
+  const encoded = encodeHTML(text);
+  const isChinese = encoded.includes(fullWidthComma);
 
-  const lines = wrapped.slice(0, maxLines); // Only consider maxLines lines
+  let wrapped = [];
+
+  if (isChinese) {
+    wrapped = encoded.split(fullWidthComma); // Chinese full punctuation
+  } else {
+    wrapped = wrap(encoded, {
+      width,
+    }).split("\n"); // Split wrapped lines to get an array of lines
+  }
+
+  const lines = wrapped.map((line) => line.trim()).slice(0, maxLines); // Only consider maxLines lines
 
   // Add "..." to the last line if the text exceeds maxLines
   if (wrapped.length > maxLines) {
@@ -263,11 +273,26 @@ class CustomError extends Error {
   constructor(message, type) {
     super(message);
     this.type = type;
-    this.secondaryMessage = SECONDARY_ERROR_MESSAGES[type] || "adsad";
+    this.secondaryMessage = SECONDARY_ERROR_MESSAGES[type] || type;
   }
 
   static MAX_RETRY = "MAX_RETRY";
   static USER_NOT_FOUND = "USER_NOT_FOUND";
+}
+
+class MissingParamError extends Error {
+  /**
+   * @param {string[]} missedParams
+   * @param {string?=} secondaryMessage
+   */
+  constructor(missedParams, secondaryMessage) {
+    const msg = `Missing params ${missedParams
+      .map((p) => `"${p}"`)
+      .join(", ")} make sure you pass the parameters in URL`;
+    super(msg);
+    this.missedParams = missedParams;
+    this.secondaryMessage = secondaryMessage;
+  }
 }
 
 /**
@@ -362,6 +387,7 @@ module.exports = {
   logger,
   CONSTANTS,
   CustomError,
+  MissingParamError,
   lowercaseTrim,
   chunkArray,
   parseEmojis,
