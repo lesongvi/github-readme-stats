@@ -34,6 +34,14 @@ const gist_data = {
   },
 };
 
+const gist_not_found_data = {
+  data: {
+    viewer: {
+      gist: null,
+    },
+  },
+};
+
 const mock = new MockAdapter(axios);
 
 afterEach(() => {
@@ -120,6 +128,46 @@ describe("Test /api/gist", () => {
         'Missing params "id" make sure you pass the parameters in URL',
         "/api/gist?id=GIST_ID",
       ),
+    );
+  });
+
+  it("should render error if gist is not found", async () => {
+    const req = {
+      query: {
+        id: "bbfce31e0217a3689c8d961a356cb10d",
+      },
+    };
+    const res = {
+      setHeader: jest.fn(),
+      send: jest.fn(),
+    };
+    mock
+      .onPost("https://api.github.com/graphql")
+      .reply(200, gist_not_found_data);
+
+    await gist(req, res);
+
+    expect(res.setHeader).toBeCalledWith("Content-Type", "image/svg+xml");
+    expect(res.send).toBeCalledWith(renderError("Gist not found"));
+  });
+
+  it("should render error if wrong locale is provided", async () => {
+    const req = {
+      query: {
+        id: "bbfce31e0217a3689c8d961a356cb10d",
+        locale: "asdf",
+      },
+    };
+    const res = {
+      setHeader: jest.fn(),
+      send: jest.fn(),
+    };
+
+    await gist(req, res);
+
+    expect(res.setHeader).toBeCalledWith("Content-Type", "image/svg+xml");
+    expect(res.send).toBeCalledWith(
+      renderError("Something went wrong", "Language not found"),
     );
   });
 });
